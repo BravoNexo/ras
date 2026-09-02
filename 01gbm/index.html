@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#14253d">
+    <meta name="application-name" content="Controle de RAS">
+    <meta name="apple-mobile-web-app-title" content="RAS 1º GBM">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <title>Controle de RAS - 1º GBM</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="../shared/style.css?v=1.0.0">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="crest" id="unitMark" aria-hidden="true">1º</div>
+          <div>
+            <h1 id="systemName">Controle de RAS</h1>
+            <p id="unitFullName">1º Grupamento de Bombeiro Militar</p>
+          </div>
+        </div>
+        <button id="logoutBtn" class="btn btn-light" type="button" hidden>Sair</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="bootScreen" class="card auth boot-screen" aria-live="polite">
+        <span class="spinner spinner-dark" aria-hidden="true"></span>
+        <strong>Carregando o Controle de RAS…</strong>
+      </section>
+
+      <section id="emailScreen" class="card auth" hidden>
+        <p class="eyebrow" id="unitName">1º GBM</p>
+        <h2>Acesso do militar</h2>
+        <p>Informe o e-mail cadastrado. Enviaremos um código de uso único para confirmar sua identidade.</p>
+        <form id="emailForm">
+          <div class="field">
+            <label for="email">E-mail cadastrado</label>
+            <input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="seuemail@exemplo.com">
+          </div>
+          <button id="sendBtn" class="btn btn-primary wide" type="submit">Enviar código</button>
+        </form>
+        <div id="emailMessage" class="message" role="status" aria-live="polite" hidden></div>
+      </section>
+
+      <section id="codeScreen" class="card auth" hidden>
+        <p class="eyebrow">Confirmação de identidade</p>
+        <h2>Digite o código</h2>
+        <p>Enviamos seis números para <strong id="maskedEmail"></strong>. O código expira em 10 minutos.</p>
+        <form id="codeForm">
+          <div class="field">
+            <label for="code">Código de acesso</label>
+            <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000">
+          </div>
+          <button id="verifyBtn" class="btn btn-primary wide" type="submit">Entrar</button>
+        </form>
+        <button id="backToEmailBtn" class="btn btn-light wide secondary-action" type="button">Usar outro e-mail</button>
+        <div id="codeMessage" class="message" role="status" aria-live="polite" hidden></div>
+      </section>
+
+      <section id="portal" hidden>
+        <div class="userbar">
+          <div>
+            <p class="eyebrow">Área do militar</p>
+            <h2 id="userName">—</h2>
+            <p id="userMeta"></p>
+          </div>
+        </div>
+
+        <div class="stats" aria-label="Resumo do RAS">
+          <div class="card stat"><span>Posição atual</span><strong id="position">—</strong></div>
+          <div class="card stat"><span>Saldo de RAS</span><strong id="balance">—</strong></div>
+          <div class="card stat"><span>Ciclo</span><strong id="cycle">—</strong></div>
+          <div class="card stat">
+            <span>Progresso</span><strong id="cycleProgress">—</strong>
+            <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+          </div>
+        </div>
+
+        <div class="notice">Suas escolhas não alteram seu saldo. As horas só são acrescentadas quando uma vaga é efetivamente concedida.</div>
+        <div id="eligibilityNotice" class="notice warning" role="status" hidden></div>
+
+        <div class="layout">
+          <section class="card panel" aria-labelledby="opportunitiesTitle">
+            <div class="panel-head">
+              <div>
+                <h3 id="opportunitiesTitle">Oportunidades abertas</h3>
+                <small>Selecione todas as vagas que você pode assumir.</small>
+              </div>
+              <span id="openCount" class="pill" aria-live="polite">0 abertas</span>
+            </div>
+            <div id="opportunities" class="opportunity-list"></div>
+          </section>
+
+          <aside class="card panel" aria-labelledby="preferencesTitle">
+            <div class="panel-head">
+              <div>
+                <h3 id="preferencesTitle">Minhas preferências</h3>
+                <small>Ordene da mais desejada para a menos desejada.</small>
+              </div>
+            </div>
+            <div id="preferences" class="preference-list"></div>
+            <div class="savebar">
+              <button id="saveBtn" class="btn btn-primary" type="button">Salvar preferências</button>
+              <small id="saveHint" role="status" aria-live="polite">Nenhuma alteração pendente.</small>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <noscript>
+      <div class="noscript">Ative o JavaScript para acessar o Controle de RAS.</div>
+    </noscript>
+
+    <script src="config.js?v=1.0.0"></script>
+    <script src="../shared/app.js?v=1.0.0"></script>
+  </body>
+</html>
