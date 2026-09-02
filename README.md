@@ -5,15 +5,15 @@ Frontend público e multiunidade para os militares consultarem o ciclo de RAS, e
 ## Endereços previstos
 
 - Entrada do módulo: `https://bravonexo.github.io/ras/`
-- 1º GBM: `https://bravonexo.github.io/ras/01gbm/`
-- Backend atual do 1º GBM: `https://script.google.com/macros/s/AKfycbw3_b3VgwwiINW6hKDsqED4tMpWMSWvizocsWYyoAaKVCvRPx1ABRHhxUR-PFMltgcy_A/exec`
+- 1º GBM e DBM 1/1: `https://bravonexo.github.io/ras/01gbm/`
+- Backend atual do 1º GBM e DBM 1/1: `https://script.google.com/macros/s/AKfycbw3_b3VgwwiINW6hKDsqED4tMpWMSWvizocsWYyoAaKVCvRPx1ABRHhxUR-PFMltgcy_A/exec`
 
 ## Estrutura
 
 ```text
-index.html          entrada do módulo e redirecionamento para o 1º GBM
+index.html          entrada do módulo e redirecionamento para o 1º GBM e DBM 1/1
 shared/             JavaScript e estilos compartilhados
-01gbm/              página, configuração e manifesto do 1º GBM
+01gbm/              página, configuração e manifesto do 1º GBM e DBM 1/1
 ```
 
 O repositório deve ser publicado pelo GitHub Pages a partir da raiz da branch `main`. Outras unidades podem receber uma pasta própria e um `config.js` apontando para seu respectivo Apps Script.
