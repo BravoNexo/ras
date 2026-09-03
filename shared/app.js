@@ -71,6 +71,7 @@
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 30000);
     let response;
+    let responseText;
 
     try {
       response = await fetch(apiUrl, {
@@ -87,16 +88,19 @@
         referrerPolicy: "no-referrer",
         signal: controller.signal
       });
+      responseText = await response.text();
     } catch (error) {
-      if (error && error.name === "AbortError") {
-        throw new Error("O servidor demorou para responder. Tente novamente.");
-      }
-      throw new Error("Não foi possível comunicar com o Controle de RAS. Confira sua conexão e tente novamente.");
+      const message = error && error.name === "AbortError"
+        ? "O servidor demorou para responder."
+        : "Não foi possível comunicar com o Controle de RAS.";
+      const transportError = new Error(message);
+      transportError.isTransportFailure = true;
+      console.warn(`[RAS] Falha de transporte em ${action}:`, error && error.name, error && error.message);
+      throw transportError;
     } finally {
       window.clearTimeout(timeout);
     }
 
-    const responseText = await response.text();
     let payload;
     try {
       payload = JSON.parse(responseText);
@@ -155,21 +159,39 @@
   async function requestCode(event) {
     event.preventDefault();
     const button = element("sendBtn");
+    const backButton = element("backToEmailBtn");
+    const verifyButton = element("verifyBtn");
     state.email = String(element("email").value || "").trim().toLowerCase();
     showMessage("emailMessage", "");
     setBusy(button, true, "Enviando");
+    backButton.disabled = true;
+    verifyButton.disabled = true;
+    element("maskedEmail").textContent = maskEmail(state.email);
+    element("code").value = "";
+    showScreen("codeScreen");
+    showMessage("codeMessage", "Solicitando o código. Isso pode levar alguns segundos.");
 
     try {
       const result = await callApi("requestAccessCode", [state.email]);
-      element("maskedEmail").textContent = maskEmail(state.email);
-      element("code").value = "";
-      showScreen("codeScreen");
       showMessage("codeMessage", result && result.message ? result.message : "Se o e-mail estiver autorizado, o código será enviado em instantes.");
       element("code").focus();
     } catch (error) {
-      showMessage("emailMessage", error.message, true);
+      if (error && error.isTransportFailure) {
+        showMessage(
+          "codeMessage",
+          "A resposta do servidor foi interrompida, mas a solicitação pode ter sido recebida. Confira a caixa de entrada e o spam. Se o código chegar, digite-o aqui; se não chegar em até 1 minuto, volte e solicite novamente.",
+          true
+        );
+        element("code").focus();
+      } else {
+        showScreen("emailScreen");
+        showMessage("emailMessage", error.message, true);
+        element("email").focus();
+      }
     } finally {
       setBusy(button, false, "Enviar código");
+      backButton.disabled = false;
+      verifyButton.disabled = false;
     }
   }
 
