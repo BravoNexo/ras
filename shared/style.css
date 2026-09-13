@@ -542,6 +542,20 @@ main {
   color: var(--red);
 }
 
+.opportunity.unavailable,
+.preference.unavailable {
+  border-color: #d4b47c;
+  background: #fff9ec;
+}
+
+.opportunity-eligibility {
+  margin: 8px 0 0;
+  color: #765214;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

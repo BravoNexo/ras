@@ -292,11 +292,15 @@
       const key = id ? opportunityGroupingKey(opportunity) : "missing-id:" + index;
       let group = byKey.get(key);
       if (!group) {
-        group = { id: id || "missing-id:" + index, ids: [], opportunity };
+        group = { id: id || "missing-id:" + index, ids: [], opportunity, eligible: true, eligibilityReason: "" };
         byKey.set(key, group);
         groups.push(group);
       }
       if (id) group.ids.push(id);
+      if (opportunity.eligible === false) {
+        group.eligible = false;
+        if (!group.eligibilityReason) group.eligibilityReason = String(opportunity.eligibilityReason || "Você não pode concorrer a este RAS na data do serviço.");
+      }
     });
     const previousPosition = new Map();
     (Array.isArray(preferenceOrder) ? preferenceOrder : []).forEach((id, index) => {
@@ -337,6 +341,22 @@
     return label;
   }
 
+  function canChooseRas() {
+    const user = state.data && state.data.user ? state.data.user : {};
+    return typeof user.canChoose === "boolean" ? user.canChoose : user.eligible !== false;
+  }
+
+  function selectedBlockedGroups() {
+    return state.groups.filter((group) => group.eligible === false && state.selected.includes(group.id));
+  }
+
+  function createEligibilityReason(group) {
+    const reason = document.createElement("p");
+    reason.className = "opportunity-eligibility";
+    reason.textContent = "Indisponível nesta data: " + group.eligibilityReason;
+    return reason;
+  }
+
   function renderPortal(data) {
     state.data = data;
     const opportunities = Array.isArray(data.opportunities) ? data.opportunities : [];
@@ -363,11 +383,12 @@
     element("cycleProgress").textContent = `${grantedCount}/${eligibleCount}`;
     element("progressBar").style.width = `${percentage}%`;
 
-    const canCompete = user.eligible !== false;
-    element("eligibilityNotice").hidden = canCompete;
-    element("eligibilityNotice").textContent = canCompete
-      ? ""
-      : "Você está temporariamente como Não concorre. As escolhas serão liberadas automaticamente ao fim do impedimento.";
+    const canCompete = canChooseRas();
+    element("eligibilityNotice").hidden = false;
+    element("eligibilityNotice").classList.toggle("warning", !canCompete);
+    element("eligibilityNotice").textContent = user.eligibilityNotice || (canCompete
+      ? "A aptidão é verificada na data de cada RAS. Férias não impedem a concorrência."
+      : "Sua participação no RAS não está liberada. Consulte a administração para verificar a definição de concorrência e o acesso.");
     if (!state.saving) setBusy(element("saveBtn"), false, "Salvar preferências");
     element("saveBtn").disabled = !canCompete || state.saving;
     const openVacancies = state.groups.reduce((total, group) => total + group.ids.length, 0);
@@ -380,17 +401,18 @@
   function renderLists() {
     renderOpportunities();
     renderPreferences();
-    setSaveHint(state.dirty ? "Alterações ainda não salvas." : "Preferências registradas.");
+    setSaveHint(selectedBlockedGroups().length
+      ? "Há preferências indisponíveis na data do serviço. Confira os motivos e remova essas opções antes de salvar."
+      : state.dirty ? "Alterações ainda não salvas." : "Preferências registradas.");
   }
 
   function renderOpportunities() {
     const container = element("opportunities");
     container.replaceChildren();
-    const user = state.data && state.data.user ? state.data.user : {};
     const groups = state.groups;
 
-    if (user.eligible === false) {
-      container.appendChild(createEmpty("Você não concorre enquanto durar o impedimento atual."));
+    if (!canChooseRas()) {
+      container.appendChild(createEmpty("Você não concorre ao RAS: sua participação não está liberada. Consulte a administração."));
       return;
     }
     if (!groups.length) {
@@ -403,7 +425,7 @@
       const id = group.id;
       const selected = state.selected.includes(id);
       const article = document.createElement("article");
-      article.className = `opportunity${selected ? " selected" : ""}`;
+      article.className = `opportunity${selected ? " selected" : ""}${group.eligible === false ? " unavailable" : ""}`;
 
       const content = document.createElement("div");
       const title = document.createElement("h4");
@@ -445,12 +467,14 @@
         note.textContent = opportunity.observations;
         content.appendChild(note);
       }
+      if (group.eligible === false) content.appendChild(createEligibilityReason(group));
 
       const button = document.createElement("button");
       button.className = "select-btn";
       button.type = "button";
       button.textContent = selected ? "✓" : "+";
-      button.disabled = state.saving || !group.ids.length;
+      button.disabled = state.saving || !group.ids.length || (group.eligible === false && !selected);
+      if (group.eligible === false) button.title = group.eligibilityReason;
       if (!group.ids.length) button.title = "Oportunidade sem identificador. Atualize o portal ou avise a administração.";
       button.setAttribute("aria-label", `${selected ? "Remover" : "Selecionar"} opção de ${opportunity.date || "data não informada"}, ${opportunity.startTime || "horário não informado"}, ${opportunity.location || "local não informado"}, ${opportunity.role || "função não informada"}, ${vacancyLabel(group)}`);
       button.setAttribute("aria-pressed", String(selected));
@@ -476,7 +500,7 @@
       const opportunity = group.opportunity;
 
       const row = document.createElement("div");
-      row.className = "preference";
+      row.className = "preference" + (group.eligible === false ? " unavailable" : "");
       const order = document.createElement("div");
       order.className = "order";
       order.textContent = String(index + 1);
@@ -493,6 +517,7 @@
       const deadline = document.createElement("span");
       deadline.textContent = `Escolher até ${opportunity.deadline || "o encerramento"}${opportunity.status ? ` • ${opportunity.status}` : ""}`;
       description.append(title, createServiceWing(opportunity), quantity, detail, deadline);
+      if (group.eligible === false) description.appendChild(createEligibilityReason(group));
       if (opportunity.observations) {
         const note = document.createElement("span");
         note.className = "preference-note";
@@ -503,8 +528,8 @@
       const controls = document.createElement("div");
       controls.className = "controls";
       controls.append(
-        createControlButton("↑", "Subir preferência", index === 0, () => movePreference(index, -1)),
-        createControlButton("↓", "Descer preferência", index === state.selected.length - 1, () => movePreference(index, 1)),
+        createControlButton("↑", "Subir preferência", index === 0 || group.eligible === false, () => movePreference(index, -1)),
+        createControlButton("↓", "Descer preferência", index === state.selected.length - 1 || group.eligible === false, () => movePreference(index, 1)),
         createControlButton("×", "Remover preferência", false, () => removePreference(index))
       );
 
@@ -519,7 +544,7 @@
     button.type = "button";
     button.textContent = label;
     button.setAttribute("aria-label", accessibleLabel);
-    button.disabled = disabled || state.saving;
+    button.disabled = disabled || state.saving || !canChooseRas();
     button.addEventListener("click", handler);
     return button;
   }
@@ -532,18 +557,20 @@
   }
 
   function toggleOpportunity(id) {
-    if (state.saving || !state.data || state.data.user.eligible === false) return;
+    if (state.saving || !state.data || !canChooseRas()) return;
     const group = state.groups.find((item) => item.id === id);
     if (!group || !group.ids.length) return;
     const index = state.selected.indexOf(id);
     if (index >= 0) state.selected.splice(index, 1);
-    else state.selected.push(id);
+    else if (group.eligible !== false) state.selected.push(id);
+    else return;
     state.dirty = true;
     renderLists();
   }
 
   function movePreference(index, delta) {
-    if (state.saving || !state.data || state.data.user.eligible === false) return;
+    if (state.saving || !state.data || !canChooseRas()) return;
+    if (state.groups.some((group) => group.id === state.selected[index] && group.eligible === false)) return;
     const target = index + delta;
     if (target < 0 || target >= state.selected.length) return;
     [state.selected[index], state.selected[target]] = [state.selected[target], state.selected[index]];
@@ -552,14 +579,18 @@
   }
 
   function removePreference(index) {
-    if (state.saving || !state.data || state.data.user.eligible === false) return;
+    if (state.saving || !state.data || !canChooseRas()) return;
     state.selected.splice(index, 1);
     state.dirty = true;
     renderLists();
   }
 
   async function savePreferences() {
-    if (state.saving || !state.token || !state.data || state.data.user.eligible === false) return;
+    if (state.saving || !state.token || !state.data || !canChooseRas()) return;
+    if (selectedBlockedGroups().length) {
+      setSaveHint("Remova das preferências as opções indisponíveis na data do serviço antes de salvar. As demais escolhas serão mantidas.", "error");
+      return;
+    }
     const token = state.token;
     const requestId = ++state.saveRequestId;
     const ids = expandedPreferenceIds();
@@ -588,7 +619,7 @@
       if (stillCurrent()) {
         state.saving = false;
         setBusy(button, false, "Salvar preferências");
-        if (state.data && state.data.user && state.data.user.eligible === false) button.disabled = true;
+        if (!canChooseRas()) button.disabled = true;
       }
     }
   }
