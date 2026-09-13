@@ -14,7 +14,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icons/ras-cbmerj-192-v3.png">
     <link rel="apple-touch-icon" sizes="180x180" href="icons/ras-cbmerj-180-v3.png">
     <link rel="manifest" href="manifest.json?v=icone-cbmerj-v3-20260912">
-    <link rel="stylesheet" href="../shared/style.css?v=1.0.2">
+    <link rel="stylesheet" href="../shared/style.css?v=1.0.3">
   </head>
   <body>
     <header class="topbar">
@@ -84,7 +84,7 @@
           </div>
         </div>
 
-        <div class="notice">Suas escolhas não alteram seu saldo. As horas só são acrescentadas quando uma vaga é efetivamente concedida.</div>
+        <div class="notice">Suas escolhas não alteram seu saldo. As horas só são acrescentadas quando uma vaga é efetivamente concedida. Uma escolha concorre a todas as vagas da opção, mas você recebe no máximo uma delas.</div>
         <div id="eligibilityNotice" class="notice warning" role="status" hidden></div>
 
         <div class="layout">
@@ -92,9 +92,9 @@
             <div class="panel-head">
               <div>
                 <h3 id="opportunitiesTitle">Oportunidades abertas</h3>
-                <small>Selecione todas as vagas que você pode assumir.</small>
+                <small>Selecione as opções que você pode assumir. Vagas com condições idênticas aparecem juntas.</small>
               </div>
-              <span id="openCount" class="pill" aria-live="polite">0 abertas</span>
+              <span id="openCount" class="pill" aria-live="polite">0 vagas abertas</span>
             </div>
             <div id="opportunities" class="opportunity-list"></div>
           </section>
@@ -121,6 +121,6 @@
     </noscript>
 
     <script src="config.js?v=1.0.2"></script>
-    <script src="../shared/app.js?v=1.0.2"></script>
+    <script src="../shared/app.js?v=1.0.3"></script>
   </body>
 </html>

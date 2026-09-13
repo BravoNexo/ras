@@ -353,6 +353,19 @@ main {
 .opportunity h4 {
   margin: 0 0 5px;
   font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.vacancy-count {
+  margin-left: 5px;
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.opportunity-note,
+.meta,
+.preference-description {
+  overflow-wrap: anywhere;
 }
 
 .meta {
@@ -397,9 +410,14 @@ main {
   color: var(--white);
 }
 
+.select-btn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
 .preference {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 32px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   padding: 11px;
@@ -423,6 +441,17 @@ main {
   display: block;
 }
 
+.preference .preference-quantity {
+  margin: 3px 0;
+  color: var(--green);
+  font-weight: 700;
+}
+
+.preference .preference-note {
+  margin-top: 4px;
+  color: var(--navy-soft);
+}
+
 .preference strong {
   font-size: 13px;
 }
@@ -434,6 +463,8 @@ main {
 
 .controls {
   display: flex;
+  grid-column: 2;
+  justify-content: flex-end;
   gap: 4px;
 }
 

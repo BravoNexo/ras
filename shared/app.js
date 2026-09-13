@@ -9,8 +9,12 @@
     email: "",
     token: readStoredSession(),
     data: null,
+    groups: [],
     selected: [],
-    dirty: false
+    preferenceOrder: [],
+    dirty: false,
+    saving: false,
+    saveRequestId: 0
   };
 
   const element = (id) => document.getElementById(id);
@@ -45,8 +49,12 @@
       if (event.key !== sessionKey || event.newValue) return;
       state.token = "";
       state.data = null;
+      state.groups = [];
       state.selected = [];
+      state.preferenceOrder = [];
       state.dirty = false;
+      state.saving = false;
+      state.saveRequestId += 1;
       showScreen("emailScreen");
       showMessage("emailMessage", "A sessão foi encerrada em outra guia.");
     });
@@ -251,13 +259,85 @@
     return !data.role || normalize(data.role) === "MILITAR";
   }
 
+  function opportunityGroupingKey(opportunity) {
+    opportunity = opportunity && typeof opportunity === "object" ? opportunity : {};
+    const text = (value) => String(value == null ? "" : value).trim();
+    const date = text(opportunity.date);
+    const startTime = text(opportunity.startTime);
+    const hours = Number(opportunity.hours);
+    const brDate = date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const isoDate = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const year = Number(brDate ? brDate[3] : isoDate ? isoDate[1] : 0);
+    const month = Number(brDate ? brDate[2] : isoDate ? isoDate[2] : 0);
+    const day = Number(brDate ? brDate[1] : isoDate ? isoDate[3] : 0);
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const monthDays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    const time = startTime.match(/^(\d{2}):(\d{2})$/);
+    if (!year || month < 1 || month > 12 || day < 1 || day > monthDays[month - 1] ||
+        !time || Number(time[1]) > 23 || Number(time[2]) > 59 || !Number.isFinite(hours) || hours <= 0) {
+      return "id:" + text(opportunity.id);
+    }
+    return JSON.stringify([date, startTime, hours, ...["origin", "location", "role", "deadline", "status", "observations"].map((field) => text(opportunity[field]))]);
+  }
+
+  function buildOpportunityGroups(opportunities, preferenceOrder) {
+    const groups = [];
+    const byKey = new Map();
+    const seenIds = new Set();
+    (Array.isArray(opportunities) ? opportunities : []).forEach((opportunity, index) => {
+      if (!opportunity || typeof opportunity !== "object") return;
+      const id = String(opportunity.id == null ? "" : opportunity.id).trim();
+      if (id && seenIds.has(id)) return;
+      if (id) seenIds.add(id);
+      const key = id ? opportunityGroupingKey(opportunity) : "missing-id:" + index;
+      let group = byKey.get(key);
+      if (!group) {
+        group = { id: id || "missing-id:" + index, ids: [], opportunity };
+        byKey.set(key, group);
+        groups.push(group);
+      }
+      if (id) group.ids.push(id);
+    });
+    const previousPosition = new Map();
+    (Array.isArray(preferenceOrder) ? preferenceOrder : []).forEach((id, index) => {
+      const normalizedId = String(id == null ? "" : id).trim();
+      if (!previousPosition.has(normalizedId)) previousPosition.set(normalizedId, index);
+    });
+    groups.forEach((group) => {
+      group.ids.sort((first, second) => (previousPosition.has(first) ? previousPosition.get(first) : Infinity) -
+        (previousPosition.has(second) ? previousPosition.get(second) : Infinity));
+    });
+    return groups;
+  }
+
+  function expandedPreferenceIds() {
+    const byId = new Map(state.groups.map((group) => [group.id, group]));
+    const result = [];
+    const seen = new Set();
+    state.selected.forEach((id) => {
+      const group = byId.get(id);
+      if (!group) return;
+      group.ids.forEach((memberId) => {
+        if (!seen.has(memberId)) { seen.add(memberId); result.push(memberId); }
+      });
+    });
+    return result;
+  }
+
+  function vacancyLabel(group) {
+    const quantity = group.ids.length || 1;
+    return `${quantity} vaga${quantity === 1 ? "" : "s"}`;
+  }
+
   function renderPortal(data) {
     state.data = data;
     const opportunities = Array.isArray(data.opportunities) ? data.opportunities : [];
-    const availableIds = new Set(opportunities.map((opportunity) => String(opportunity.id)));
-    state.selected = (Array.isArray(data.preferenceOrder) ? data.preferenceOrder : [])
-      .map(String)
-      .filter((id) => availableIds.has(id));
+    state.preferenceOrder = (Array.isArray(data.preferenceOrder) ? data.preferenceOrder : [])
+      .map((id) => String(id == null ? "" : id).trim());
+    state.groups = buildOpportunityGroups(opportunities, state.preferenceOrder);
+    const groupByMember = new Map();
+    state.groups.forEach((group) => group.ids.forEach((id) => groupByMember.set(id, group.id)));
+    state.selected = [...new Set(state.preferenceOrder.map((id) => groupByMember.get(id)).filter(Boolean))];
     state.dirty = false;
 
     const user = data.user || {};
@@ -280,8 +360,10 @@
     element("eligibilityNotice").textContent = canCompete
       ? ""
       : "Você está temporariamente como Não concorre. As escolhas serão liberadas automaticamente ao fim do impedimento.";
-    element("saveBtn").disabled = !canCompete;
-    element("openCount").textContent = `${opportunities.length} aberta${opportunities.length === 1 ? "" : "s"}`;
+    if (!state.saving) setBusy(element("saveBtn"), false, "Salvar preferências");
+    element("saveBtn").disabled = !canCompete || state.saving;
+    const openVacancies = state.groups.reduce((total, group) => total + group.ids.length, 0);
+    element("openCount").textContent = `${openVacancies} vaga${openVacancies === 1 ? "" : "s"} aberta${openVacancies === 1 ? "" : "s"}`;
 
     renderLists();
     showScreen("portal");
@@ -297,19 +379,20 @@
     const container = element("opportunities");
     container.replaceChildren();
     const user = state.data && state.data.user ? state.data.user : {};
-    const opportunities = state.data && Array.isArray(state.data.opportunities) ? state.data.opportunities : [];
+    const groups = state.groups;
 
     if (user.eligible === false) {
       container.appendChild(createEmpty("Você não concorre enquanto durar o impedimento atual."));
       return;
     }
-    if (!opportunities.length) {
+    if (!groups.length) {
       container.appendChild(createEmpty("Não há oportunidades abertas neste momento."));
       return;
     }
 
-    opportunities.forEach((opportunity) => {
-      const id = String(opportunity.id || "");
+    groups.forEach((group) => {
+      const opportunity = group.opportunity;
+      const id = group.id;
       const selected = state.selected.includes(id);
       const article = document.createElement("article");
       article.className = `opportunity${selected ? " selected" : ""}`;
@@ -321,6 +404,10 @@
       origin.className = "pill";
       origin.textContent = opportunity.origin || "RAS";
       title.appendChild(origin);
+      const quantity = document.createElement("span");
+      quantity.className = "pill vacancy-count";
+      quantity.textContent = vacancyLabel(group);
+      title.appendChild(quantity);
       content.appendChild(title);
 
       const metadata = document.createElement("div");
@@ -337,6 +424,12 @@
       });
       content.appendChild(metadata);
 
+      if (opportunity.status) {
+        const status = document.createElement("span");
+        status.textContent = `Situação: ${opportunity.status}`;
+        metadata.appendChild(status);
+      }
+
       if (opportunity.observations) {
         const note = document.createElement("p");
         note.className = "opportunity-note";
@@ -348,7 +441,9 @@
       button.className = "select-btn";
       button.type = "button";
       button.textContent = selected ? "✓" : "+";
-      button.setAttribute("aria-label", `${selected ? "Remover" : "Selecionar"} oportunidade de ${opportunity.date || "data não informada"}`);
+      button.disabled = state.saving || !group.ids.length;
+      if (!group.ids.length) button.title = "Oportunidade sem identificador. Atualize o portal ou avise a administração.";
+      button.setAttribute("aria-label", `${selected ? "Remover" : "Selecionar"} opção de ${opportunity.date || "data não informada"}, ${opportunity.startTime || "horário não informado"}, ${opportunity.location || "local não informado"}, ${opportunity.role || "função não informada"}, ${vacancyLabel(group)}`);
       button.setAttribute("aria-pressed", String(selected));
       button.addEventListener("click", () => toggleOpportunity(id));
 
@@ -367,8 +462,9 @@
     }
 
     state.selected.forEach((id, index) => {
-      const opportunity = state.data.opportunities.find((item) => String(item.id) === id);
-      if (!opportunity) return;
+      const group = state.groups.find((item) => item.id === id);
+      if (!group) return;
+      const opportunity = group.opportunity;
 
       const row = document.createElement("div");
       row.className = "preference";
@@ -377,11 +473,23 @@
       order.textContent = String(index + 1);
 
       const description = document.createElement("div");
+      description.className = "preference-description";
       const title = document.createElement("strong");
-      title.textContent = `${opportunity.date || "Data a definir"} • ${Number(opportunity.hours || 0)}h`;
+      title.textContent = `${opportunity.date || "Data a definir"} • ${opportunity.startTime || "Horário a definir"} • ${Number(opportunity.hours || 0)}h`;
+      const quantity = document.createElement("span");
+      quantity.className = "preference-quantity";
+      quantity.textContent = vacancyLabel(group);
       const detail = document.createElement("span");
-      detail.textContent = `${opportunity.origin || "RAS"} — ${opportunity.location || opportunity.role || "Local a definir"}`;
-      description.append(title, detail);
+      detail.textContent = `${opportunity.origin || "RAS"} • ${opportunity.location || "Local a definir"} • ${opportunity.role || "Função a definir"}`;
+      const deadline = document.createElement("span");
+      deadline.textContent = `Escolher até ${opportunity.deadline || "o encerramento"}${opportunity.status ? ` • ${opportunity.status}` : ""}`;
+      description.append(title, quantity, detail, deadline);
+      if (opportunity.observations) {
+        const note = document.createElement("span");
+        note.className = "preference-note";
+        note.textContent = opportunity.observations;
+        description.appendChild(note);
+      }
 
       const controls = document.createElement("div");
       controls.className = "controls";
@@ -402,7 +510,7 @@
     button.type = "button";
     button.textContent = label;
     button.setAttribute("aria-label", accessibleLabel);
-    button.disabled = disabled;
+    button.disabled = disabled || state.saving;
     button.addEventListener("click", handler);
     return button;
   }
@@ -415,6 +523,9 @@
   }
 
   function toggleOpportunity(id) {
+    if (state.saving || !state.data || state.data.user.eligible === false) return;
+    const group = state.groups.find((item) => item.id === id);
+    if (!group || !group.ids.length) return;
     const index = state.selected.indexOf(id);
     if (index >= 0) state.selected.splice(index, 1);
     else state.selected.push(id);
@@ -423,6 +534,7 @@
   }
 
   function movePreference(index, delta) {
+    if (state.saving || !state.data || state.data.user.eligible === false) return;
     const target = index + delta;
     if (target < 0 || target >= state.selected.length) return;
     [state.selected[index], state.selected[target]] = [state.selected[target], state.selected[index]];
@@ -431,29 +543,44 @@
   }
 
   function removePreference(index) {
+    if (state.saving || !state.data || state.data.user.eligible === false) return;
     state.selected.splice(index, 1);
     state.dirty = true;
     renderLists();
   }
 
   async function savePreferences() {
-    if (!state.token || !state.data || state.data.user.eligible === false) return;
+    if (state.saving || !state.token || !state.data || state.data.user.eligible === false) return;
+    const token = state.token;
+    const requestId = ++state.saveRequestId;
+    const ids = expandedPreferenceIds();
+    const stillCurrent = () => state.token === token && state.saveRequestId === requestId;
+    state.saving = true;
     const button = element("saveBtn");
-    setSaveHint("");
     setBusy(button, true, "Salvando");
+    renderLists();
+    setSaveHint("Salvando preferências… Aguarde para continuar editando.");
 
     try {
-      const result = await callApi("savePreferences", [state.token, [...state.selected]]);
+      const result = await callApi("savePreferences", [token, ids]);
+      if (!stillCurrent()) return;
       if (!result || !isMilitaryPortalData(result.data)) {
         throw new Error("O servidor não devolveu os dados atualizados do RAS.");
       }
+      state.saving = false;
       renderPortal(result.data);
       setSaveHint(result.message || "Preferências registradas com sucesso.", "success");
     } catch (error) {
+      if (!stillCurrent()) return;
+      state.saving = false;
+      renderLists();
       setSaveHint(error.message, "error");
     } finally {
-      setBusy(button, false, "Salvar preferências");
-      if (state.data && state.data.user && state.data.user.eligible === false) button.disabled = true;
+      if (stillCurrent()) {
+        state.saving = false;
+        setBusy(button, false, "Salvar preferências");
+        if (state.data && state.data.user && state.data.user.eligible === false) button.disabled = true;
+      }
     }
   }
 
@@ -485,8 +612,12 @@
     removeStoredSession();
     state.token = "";
     state.data = null;
+    state.groups = [];
     state.selected = [];
+    state.preferenceOrder = [];
     state.dirty = false;
+    state.saving = false;
+    state.saveRequestId += 1;
   }
 
   function maskEmail(email) {
