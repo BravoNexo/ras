@@ -329,6 +329,14 @@
     return `${quantity} vaga${quantity === 1 ? "" : "s"}`;
   }
 
+  function createServiceWing(opportunity) {
+    const wing = opportunity && opportunity.serviceWing;
+    const label = document.createElement("span");
+    label.className = "service-wing";
+    label.textContent = `Ala de serviço: ${Number.isInteger(wing) && wing >= 1 && wing <= 4 ? wing : "não informada"}`;
+    return label;
+  }
+
   function renderPortal(data) {
     state.data = data;
     const opportunities = Array.isArray(data.opportunities) ? data.opportunities : [];
@@ -409,6 +417,7 @@
       quantity.textContent = vacancyLabel(group);
       title.appendChild(quantity);
       content.appendChild(title);
+      content.appendChild(createServiceWing(opportunity));
 
       const metadata = document.createElement("div");
       metadata.className = "meta";
@@ -483,7 +492,7 @@
       detail.textContent = `${opportunity.origin || "RAS"} • ${opportunity.location || "Local a definir"} • ${opportunity.role || "Função a definir"}`;
       const deadline = document.createElement("span");
       deadline.textContent = `Escolher até ${opportunity.deadline || "o encerramento"}${opportunity.status ? ` • ${opportunity.status}` : ""}`;
-      description.append(title, quantity, detail, deadline);
+      description.append(title, createServiceWing(opportunity), quantity, detail, deadline);
       if (opportunity.observations) {
         const note = document.createElement("span");
         note.className = "preference-note";

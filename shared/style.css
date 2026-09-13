@@ -362,6 +362,16 @@ main {
   color: var(--green);
 }
 
+.opportunity .service-wing,
+.preference .service-wing {
+  display: block;
+  margin: 3px 0 6px;
+  color: var(--navy-soft);
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .opportunity-note,
 .meta,
 .preference-description {
