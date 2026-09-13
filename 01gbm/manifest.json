@@ -8,5 +8,25 @@
   "scope": "./",
   "display": "standalone",
   "background_color": "#f3f6f8",
-  "theme_color": "#14253d"
+  "theme_color": "#14253d",
+  "icons": [
+    {
+      "src": "icons/ras-cbmerj-192-v3.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/ras-cbmerj-512-v3.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/ras-cbmerj-maskable-512-v3.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }
