@@ -72,17 +72,16 @@ input:focus-visible {
   display: flex;
   align-items: center;
   gap: 13px;
+  min-width: 0;
 }
 
 .crest {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: linear-gradient(145deg, var(--cyan), var(--white));
-  display: grid;
-  place-items: center;
-  color: var(--navy);
-  font-weight: 800;
+  display: block;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: contain;
 }
 
 .brand h1 {
@@ -563,6 +562,11 @@ main {
 @media (max-width: 780px) {
   .topbar {
     padding: 15px;
+  }
+
+  .crest {
+    width: 56px;
+    height: 56px;
   }
 
   .brand p {

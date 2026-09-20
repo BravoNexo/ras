@@ -24,9 +24,6 @@
     element("systemName").textContent = config.nomeSistema || "Controle de RAS";
     element("unitName").textContent = config.nomeUnidade || "Unidade";
     element("unitFullName").textContent = config.nomeCompletoUnidade || config.nomeUnidade || "Unidade";
-
-    const match = String(config.nomeUnidade || "").match(/^\s*(\d+º?)/);
-    element("unitMark").textContent = match ? match[1] : "BN";
   }
 
   function bindEvents() {
