@@ -14,7 +14,8 @@
     <link rel="icon" type="image/png" sizes="192x192" href="icons/ras-cbmerj-192-v3.png">
     <link rel="apple-touch-icon" sizes="180x180" href="icons/ras-cbmerj-180-v3.png">
     <link rel="manifest" href="manifest.json?v=icone-cbmerj-v3-20260912">
-    <link rel="stylesheet" href="../shared/style.css?v=1.0.6">
+    <link rel="stylesheet" href="../shared/style.css?v=1.0.7">
+    <link rel="stylesheet" href="../shared/portal-services.css?v=1.0.7">
   </head>
   <body>
     <header class="topbar">
@@ -103,10 +104,11 @@
             <div class="panel-head">
               <div>
                 <h3 id="preferencesTitle">Minhas preferências</h3>
-                <small>Ordene da mais desejada para a menos desejada.</small>
+                <small id="preferenceInstructions">A primeira opção é sua maior prioridade. Arraste pelo botão ⠿ ou use as setas para mudar a ordem.</small>
               </div>
             </div>
-            <div id="preferences" class="preference-list"></div>
+            <div id="preferences" class="preference-list" role="list" aria-label="Preferências em ordem de prioridade"></div>
+            <div id="preferenceAnnouncement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
             <div class="savebar">
               <button id="saveBtn" class="btn btn-primary" type="button">Salvar preferências</button>
               <small id="saveHint" role="status" aria-live="polite">Nenhuma alteração pendente.</small>
@@ -120,7 +122,9 @@
       <div class="noscript">Ative o JavaScript para acessar o Controle de RAS.</div>
     </noscript>
 
-    <script src="config.js?v=1.0.2"></script>
-    <script src="../shared/app.js?v=1.0.6"></script>
+    <script src="config.js?v=1.0.7"></script>
+    <script src="../shared/preference-cards.js?v=1.0.7"></script>
+    <script src="../shared/portal-services.js?v=1.0.7"></script>
+    <script src="../shared/app.js?v=1.0.7"></script>
   </body>
 </html>

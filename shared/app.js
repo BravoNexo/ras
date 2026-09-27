@@ -18,6 +18,8 @@
   };
 
   const element = (id) => document.getElementById(id);
+  let preferenceCards = null;
+  let portalServices = null;
 
   function applyUnitConfig() {
     document.title = `${config.nomeSistema || "Controle de RAS"} - ${config.nomeUnidade || "Unidade"}`;
@@ -27,6 +29,18 @@
   }
 
   function bindEvents() {
+    portalServices = window.createRasPortalServices({ state, callApi });
+    preferenceCards = window.BravoNexoPreferenceCards.create({
+      container: element("preferences"),
+      getOrder: () => [...state.selected],
+      canMove: canMovePreference,
+      onReorder: (order) => {
+        state.selected = order;
+        state.dirty = true;
+        renderLists();
+      },
+      announce: (message) => { element("preferenceAnnouncement").textContent = message; }
+    });
     element("emailForm").addEventListener("submit", requestCode);
     element("codeForm").addEventListener("submit", verifyCode);
     element("backToEmailBtn").addEventListener("click", backToEmail);
@@ -44,6 +58,7 @@
 
     window.addEventListener("storage", (event) => {
       if (event.key !== sessionKey || event.newValue) return;
+      portalServices.reset();
       state.token = "";
       state.data = null;
       state.groups = [];
@@ -62,6 +77,9 @@
     "verifyAccessCode",
     "getPortalData",
     "savePreferences",
+    "getMyRasServices",
+    "requestRasCancellation",
+    "getOpportunityParticipants",
     "logout"
   ]);
 
@@ -130,6 +148,7 @@
   }
 
   function showScreen(id) {
+    if (id !== "portal" && preferenceCards) preferenceCards.cancel();
     screens.forEach((screenId) => {
       const screen = element(screenId);
       screen.hidden = screenId !== id;
@@ -465,6 +484,7 @@
         content.appendChild(note);
       }
       if (group.eligible === false) content.appendChild(createEligibilityReason(group));
+      portalServices.addParticipants(content, group);
 
       const button = document.createElement("button");
       button.className = "select-btn";
@@ -483,6 +503,7 @@
   }
 
   function renderPreferences() {
+    if (preferenceCards) preferenceCards.cancel();
     const container = element("preferences");
     container.replaceChildren();
 
@@ -498,6 +519,10 @@
 
       const row = document.createElement("div");
       row.className = "preference" + (group.eligible === false ? " unavailable" : "");
+      row.dataset.preferenceId = id;
+      row.setAttribute("role", "listitem");
+      row.setAttribute("aria-posinset", String(index + 1));
+      row.setAttribute("aria-setsize", String(state.selected.length));
       const order = document.createElement("div");
       order.className = "order";
       order.textContent = String(index + 1);
@@ -524,10 +549,16 @@
 
       const controls = document.createElement("div");
       controls.className = "controls";
+      const handle = createControlButton("⠿", `Arrastar preferência de ${opportunity.date || "data a definir"}. Use também as setas do teclado.`,
+        state.selected.length < 2 || group.eligible === false, () => {}, "drag");
+      handle.classList.add("preference-drag-handle");
+      handle.title = "Arraste para mudar a prioridade";
+      handle.setAttribute("aria-describedby", "preferenceInstructions");
       controls.append(
-        createControlButton("↑", "Subir preferência", index === 0 || group.eligible === false, () => movePreference(index, -1)),
-        createControlButton("↓", "Descer preferência", index === state.selected.length - 1 || group.eligible === false, () => movePreference(index, 1)),
-        createControlButton("×", "Remover preferência", false, () => removePreference(index))
+        handle,
+        createControlButton("↑", "Subir preferência", index === 0 || group.eligible === false, () => movePreference(index, -1), "up"),
+        createControlButton("↓", "Descer preferência", index === state.selected.length - 1 || group.eligible === false, () => movePreference(index, 1), "down"),
+        createControlButton("×", "Remover preferência", false, () => removePreference(index), "remove")
       );
 
       row.append(order, description, controls);
@@ -535,12 +566,13 @@
     });
   }
 
-  function createControlButton(label, accessibleLabel, disabled, handler) {
+  function createControlButton(label, accessibleLabel, disabled, handler, action) {
     const button = document.createElement("button");
     button.className = "icon-btn";
     button.type = "button";
     button.textContent = label;
     button.setAttribute("aria-label", accessibleLabel);
+    if (action) button.dataset.preferenceAction = action;
     button.disabled = disabled || state.saving || !canChooseRas();
     button.addEventListener("click", handler);
     return button;
@@ -565,14 +597,13 @@
     renderLists();
   }
 
+  function canMovePreference(id) {
+    if (state.saving || !state.data || !canChooseRas()) return false;
+    return state.selected.includes(id) && state.groups.some((group) => group.id === id && group.eligible !== false);
+  }
+
   function movePreference(index, delta) {
-    if (state.saving || !state.data || !canChooseRas()) return;
-    if (state.groups.some((group) => group.id === state.selected[index] && group.eligible === false)) return;
-    const target = index + delta;
-    if (target < 0 || target >= state.selected.length) return;
-    [state.selected[index], state.selected[target]] = [state.selected[target], state.selected[index]];
-    state.dirty = true;
-    renderLists();
+    preferenceCards.move(state.selected[index], delta, delta < 0 ? "up" : "down");
   }
 
   function removePreference(index) {
@@ -646,6 +677,7 @@
   }
 
   function clearLocalSession() {
+    if (portalServices) portalServices.reset();
     removeStoredSession();
     state.token = "";
     state.data = null;
