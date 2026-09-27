@@ -175,36 +175,39 @@
       }
     }
     function addParticipants(content, group) {
-      const details = el('details', 'ras-participants');
-      const summaryNode = el('summary', '', 'Ver inscritos');
-      const container = el('div', 'ras-participants-content');
-      const status = el('p'); status.setAttribute('role', 'status');
-      const names = el('ul');
-      const reload = button('Atualizar inscritos', () => void load());
-      container.append(status, names, reload);
-      details.append(summaryNode, container);
-      let busy = false, loaded = false;
+      const container = el('div', 'ras-participants-count');
+      const quantity = el('strong');
+      quantity.setAttribute('role', 'status');
+      const reload = button('Atualizar', () => void load(), 'ras-count-refresh');
+      reload.setAttribute('aria-label', 'Atualizar quantidade de inscritos');
+      const status = el('span', 'ras-count-help');
+      const countIsValid = (value) => Number.isInteger(value) && value >= 0;
+      const showCount = (value) => {
+        quantity.textContent = `${value} inscrito${value === 1 ? '' : 's'}`;
+        status.textContent = 'Inscrições salvas.';
+      };
+      const initial = group.opportunity && group.opportunity.participantCount;
+      if (countIsValid(initial)) showCount(initial);
+      else { quantity.textContent = 'Quantidade de inscritos'; status.textContent = 'Toque em Atualizar para consultar.'; }
+      container.append(quantity, reload, status);
+      let busy = false;
       async function load() {
-        if (busy || !state.token || !details.isConnected) return;
+        if (busy || !state.token || !container.isConnected) return;
         const token = state.token, generation = epoch;
         busy = true; reload.disabled = true; status.textContent = 'Consultando inscrições salvas…';
         try {
           const data = await callApi('getOpportunityParticipants', [token, group.id]);
-          if (!current(token, generation) || !details.isConnected) return;
-          if (!data || !Array.isArray(data.participants)) throw new Error('Não foi possível conferir os inscritos.');
-          names.replaceChildren();
-          data.participants.forEach((person) => names.append(el('li', '', [person.rank, person.name].filter(Boolean).join(' '))));
-          summaryNode.textContent = `${data.participants.length} inscrito${data.participants.length === 1 ? '' : 's'}`;
-          status.textContent = (data.participants.length ? '' : 'Nenhuma inscrição salva ainda. ') + (data.notice || 'Inscrições salvas, em ordem alfabética. Esta lista não é a fila de concessão.');
-          loaded = true;
+          if (!current(token, generation) || !container.isConnected) return;
+          if (!data || !countIsValid(data.count)) throw new Error('Não foi possível conferir a quantidade de inscritos.');
+          showCount(data.count);
+          group.opportunity.participantCount = data.count;
         } catch (error) {
-          if (current(token, generation) && details.isConnected) status.textContent = error.message;
+          if (current(token, generation) && container.isConnected) status.textContent = error.message;
         } finally {
           busy = false; reload.disabled = false;
         }
       }
-      details.addEventListener('toggle', () => { if (details.open && !loaded) void load(); });
-      content.append(details);
+      content.append(container);
     }
     function reset() {
       epoch += 1; listRequest += 1; services = []; pendingSubmit = false; dialogRecord = null; lastFocus = null;
