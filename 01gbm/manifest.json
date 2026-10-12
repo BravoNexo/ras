@@ -2,7 +2,6 @@
   "id": "./",
   "name": "Controle de RAS - 1º GBM e DBM 1/1",
   "short_name": "RAS 1º GBM + DBM",
-  "description": "Escolha e ordenação de oportunidades de RAS do 1º GBM e DBM 1/1.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
@@ -21,12 +20,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "icons/ras-cbmerj-maskable-512-v3.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }

@@ -8,12 +8,12 @@
     <meta name="apple-mobile-web-app-title" content="RAS 1º GBM e DBM 1/1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="referrer" content="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://ciqctdckqmopdeoigzfz.supabase.co; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Controle de RAS - 1º GBM e DBM 1/1</title>
-    <link rel="icon" type="image/png" sizes="48x48" href="icons/ras-cbmerj-48-v3.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/ras-cbmerj-192-v3.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icons/ras-cbmerj-180-v3.png">
-    <link rel="manifest" href="manifest.json?v=icone-cbmerj-v3-20260912">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/ras-cbmerj-192-v3.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/ras-cbmerj-192-v3.png">
+    <link rel="manifest" href="manifest.json?v=ras-password-1.1.0-45cff6031b1d">
     <link rel="stylesheet" href="../shared/style.css?v=1.0.7">
     <link rel="stylesheet" href="../shared/portal-services.css?v=1.0.8">
   </head>
@@ -37,36 +37,34 @@
         <strong>Carregando o Controle de RAS…</strong>
       </section>
 
-      <section id="emailScreen" class="card auth" hidden>
-        <p class="eyebrow" id="unitName">1º GBM e DBM 1/1</p>
-        <h2>Acesso do militar</h2>
-        <p>Informe o e-mail cadastrado. Enviaremos um código de uso único para confirmar sua identidade.</p>
-        <form id="emailForm">
-          <div class="field">
-            <label for="email">E-mail cadastrado</label>
-            <input id="email" type="email" autocomplete="email" inputmode="email" required placeholder="seuemail@exemplo.com">
-          </div>
-          <button id="sendBtn" class="btn btn-primary wide" type="submit">Enviar código</button>
-        </form>
-        <div id="emailMessage" class="message" role="status" aria-live="polite" hidden></div>
-      </section>
+<section id="rasAccessScreen" class="card auth" hidden>
+  <p class="eyebrow" id="unitName">1º GBM e DBM 1/1</p><h2>Acesso do militar</h2>
+  <p>Entre com seu RG e a mesma senha utilizada na Gestão de Serviço. A autorização para o RAS é conferida separadamente.</p>
+  <form id="rasLoginForm"><fieldset id="rasLoginFields" disabled>
+    <div class="field"><label for="rasRg">RG</label><input id="rasRg" type="text" autocomplete="username" maxlength="40" required placeholder="Seu RG cadastrado"></div>
+    <div class="field"><label for="rasPassword">Senha</label><input id="rasPassword" type="password" autocomplete="current-password" maxlength="1024" required></div>
+    <button id="rasShowPassword" class="btn btn-light secondary-action" type="button" aria-controls="rasPassword" aria-pressed="false">Mostrar senha</button>
+    <button id="rasLoginSubmit" class="btn btn-primary wide" type="submit">Entrar</button>
+  </fieldset></form>
+  <div id="rasAccountActions"><button id="rasFirstAccess" class="btn btn-light secondary-action" type="button">Primeiro acesso</button> <button id="rasRecovery" class="btn btn-light secondary-action" type="button">Esqueci minha senha</button></div>
+  <form id="rasRequestForm" hidden><fieldset id="rasRequestFields" disabled>
+    <div class="field"><label for="rasRequestRg">RG</label><input id="rasRequestRg" type="text" autocomplete="username" maxlength="40" required></div>
+    <div class="field" id="rasEmailField"><label for="rasRegisteredEmail">E-mail do cadastro</label><input id="rasRegisteredEmail" type="email" autocomplete="email" maxlength="254"></div>
+    <p id="rasRecoveryNote" hidden>O código será enviado somente ao e-mail do cadastro.</p><button id="rasRequestSubmit" class="btn btn-primary wide" type="submit">Enviar código</button>
+  </fieldset></form>
+  <form id="rasCodeForm" hidden><fieldset id="rasCodeFields" disabled><div class="field"><label for="rasCode">Código recebido no e-mail</label><input id="rasCode" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" minlength="6" maxlength="8" required></div><button id="rasCodeSubmit" class="btn btn-primary wide" type="submit">Confirmar e-mail</button></fieldset></form>
+  <form id="rasNewPasswordForm" hidden><fieldset id="rasNewPasswordFields" disabled>
+    <div class="field"><label for="rasNewPassword">Nova senha</label><input id="rasNewPassword" type="password" autocomplete="new-password" minlength="8" maxlength="1024" required></div>
+    <div class="field"><label for="rasConfirmPassword">Repita a nova senha</label><input id="rasConfirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="1024" required></div>
+    <p>Pelo menos 8 caracteres. A senha é compartilhada com a Gestão de Serviço.</p><button id="rasCompleteSubmit" class="btn btn-primary wide" type="submit">Salvar senha e entrar</button>
+  </fieldset></form>
+  <button id="rasCancelFlow" class="btn btn-light wide secondary-action" type="button" hidden>Voltar</button>
+  <p id="rasAccessMessage" class="message" role="status" aria-live="polite"></p>
+  <button id="rasReloadPortal" class="btn btn-light wide secondary-action" type="button" hidden>Tentar carregar o RAS novamente</button>
+</section>
 
-      <section id="codeScreen" class="card auth" hidden>
-        <p class="eyebrow">Confirmação de identidade</p>
-        <h2>Digite o código</h2>
-        <p>Enviamos seis números para <strong id="maskedEmail"></strong>. O código expira em 10 minutos.</p>
-        <form id="codeForm">
-          <div class="field">
-            <label for="code">Código de acesso</label>
-            <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required placeholder="000000">
-          </div>
-          <button id="verifyBtn" class="btn btn-primary wide" type="submit">Entrar</button>
-        </form>
-        <button id="backToEmailBtn" class="btn btn-light wide secondary-action" type="button">Usar outro e-mail</button>
-        <div id="codeMessage" class="message" role="status" aria-live="polite" hidden></div>
-      </section>
-
-      <section id="portal" hidden>
+      <div id="rasPendingNotice" class="notice warning" hidden><p data-ras-pending-message role="status" aria-live="polite"></p><button id="rasReconcile" data-ras-reconcile class="btn btn-light" type="button" hidden>Consultar resultado do envio</button></div>
+<section id="portal" hidden>
         <div class="userbar">
           <div>
             <p class="eyebrow">Área do militar</p>
@@ -122,9 +120,6 @@
       <div class="noscript">Ative o JavaScript para acessar o Controle de RAS.</div>
     </noscript>
 
-    <script src="config.js?v=1.0.8"></script>
-    <script src="../shared/preference-cards.js?v=1.0.7"></script>
-    <script src="../shared/portal-services.js?v=1.0.8"></script>
-    <script src="../shared/app.js?v=1.0.7"></script>
+    <script src="../shared/app.js?v=ras-password-1.1.0-45cff6031b1d"></script>
   </body>
 </html>
